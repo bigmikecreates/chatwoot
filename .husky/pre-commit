@@ -1,11 +1,43 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-# lint js and vue files
-npx --no-install lint-staged
+###############################################################################
+# JS / Vue linting — force Linux npx, not Windows npx
+###############################################################################
 
-# lint only staged ruby files that still exist (not deleted)
-git diff --name-only --cached | xargs -I {} sh -c 'test -f "{}" && echo "{}"' | grep '\.rb$' | xargs -I {} bundle exec rubocop --force-exclusion -a "{}" || true
+NPX_BIN="$(command -v npx || true)"
 
-# stage rubocop changes to files
-git diff --name-only --cached | xargs -I {} sh -c 'test -f "{}" && git add "{}"' || true
+# If npx resolves to a Windows path, force Linux binary
+case "$NPX_BIN" in
+  /mnt/c/*|/c/*|C:/*|*/Program\ Files/*)
+    if [ -x /usr/bin/npx ]; then
+      NPX_BIN=/usr/bin/npx
+    elif [ -x /bin/npx ]; then
+      NPX_BIN=/bin/npx
+    else
+      NPX_BIN=""
+    fi
+    ;;
+esac
+
+if [ -n "$NPX_BIN" ] && [ -x "$NPX_BIN" ]; then
+  "$NPX_BIN" --no-install lint-staged
+else
+  echo "pre-commit: npx not found; skipping lint-staged"
+fi
+
+###############################################################################
+# Ruby linting — only run on staged .rb files that still exist
+###############################################################################
+
+if command -v bundle >/dev/null 2>&1; then
+  git diff --name-only --cached \
+    | grep '\.rb$' \
+    | xargs -I {} sh -c 'test -f "{}" && bundle exec rubocop --force-exclusion -a "{}"' || true
+
+  # stage rubocop changes
+  git diff --name-only --cached \
+    | xargs -I {} sh -c 'test -f "{}" && git add "{}"' || true
+else
+  echo "pre-commit: bundle not found; skipping rubocop"
+fi
