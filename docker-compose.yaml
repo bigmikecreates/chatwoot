@@ -8,6 +8,7 @@ services:
         EXECJS_RUNTIME: 'Node'
         RAILS_ENV: 'development'
         RAILS_SERVE_STATIC_FILES: 'false'
+        GIT_SHA: "${GIT_SHA:-unknown}"
     tty: true
     stdin_open: true
     image: chatwoot:development
