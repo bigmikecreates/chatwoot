@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   base: &base
     build:
@@ -11,7 +9,7 @@ services:
         RAILS_ENV: 'development'
         RAILS_SERVE_STATIC_FILES: 'false'
     tty: true
-    stdin_open: true
+    stdin_open: true  
     image: chatwoot:development
     env_file: .env
 
@@ -90,9 +88,9 @@ services:
     volumes:
       - postgres:/data/postgres
     environment:
-      - POSTGRES_DB=chatwoot
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
   redis:
     image: redis:alpine
