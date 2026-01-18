@@ -19,7 +19,7 @@ class InstallationConfig < ApplicationRecord
   # https://discuss.rubyonrails.org/t/cve-2022-32224-possible-rce-escalation-bug-with-serialized-columns-in-active-record/81017
   # FIX ME : fixes breakage of installation config. we need to migrate.
   # Fix configuration in application.rb
-  serialize :serialized_value, coder: YAML, type: ActiveSupport::HashWithIndifferentAccess
+  attribute :serialized_value, :json, default: {}
 
   before_validation :set_lock
   validates :name, presence: true
@@ -32,13 +32,42 @@ class InstallationConfig < ApplicationRecord
 
   after_commit :clear_cache
 
-  def value
-    # This is an extra hack again cause of the YAML serialization, in case of new object initialization in super admin
-    # It was throwing error as the default value of column '{}' was failing in deserialization.
-    return {}.with_indifferent_access if new_record? && @attributes['serialized_value']&.value_before_type_cast == '{}'
+  # def value
+  #   # This is an extra hack again cause of the YAML serialization, in case of new object initialization in super admin
+  #   # It was throwing error as the default value of column '{}' was failing in deserialization.
+  #   return {}.with_indifferent_access if new_record? && @attributes['serialized_value']&.value_before_type_cast == '{}'
 
-    serialized_value[:value]
-  end
+  #   serialized_value[:value]
+  # end
+
+  def value
+  raw = self[:serialized_value]
+
+  # Handle legacy/dirty states where jsonb column contains a string
+  data =
+    case raw
+    when Hash
+      raw
+    when String
+      begin
+        JSON.parse(raw)
+      rescue JSON::ParserError
+        begin
+          YAML.safe_load(raw, permitted_classes: [], aliases: false) || {}
+        rescue StandardError
+          {}
+        end
+      end
+    when nil
+      {}
+    else
+      raw.respond_to?(:to_h) ? raw.to_h : {}
+    end
+
+  data = data.with_indifferent_access
+  data[:value]
+end
+
 
   def value=(value_to_assigned)
     self.serialized_value = {

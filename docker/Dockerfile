@@ -58,6 +58,11 @@ WORKDIR /app
 
 COPY Gemfile Gemfile.lock ./
 
+RUN BUNDLER_VERSION="$(ruby -e 'lock=File.read("Gemfile.lock"); puts lock[/BUNDLED WITH\s*\n\s*([0-9.]+)/,1]')" \
+ && echo "Installing bundler $BUNDLER_VERSION" \
+ && gem install bundler -v "$BUNDLER_VERSION" --no-document \
+ && bundle -v
+
 # natively compile grpc and protobuf to support alpine musl (dialogflow-docker workflow)
 # https://github.com/googleapis/google-cloud-ruby/issues/13306
 # adding xz as nokogiri was failing to build libxml
@@ -128,7 +133,7 @@ RUN apk update && apk add --no-cache \
   imagemagick \
   git \
   vips \
-  && gem install bundler
+  && gem install bundler -v2.5.11
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
